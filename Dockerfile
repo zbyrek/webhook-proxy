@@ -1,8 +1,8 @@
-ARG BASE_IMAGE="alpine"
+ARG BASE_IMAGE="alpine:3.11"
 
 FROM $BASE_IMAGE
 
-LABEL maintainer "Viktor Adam <rycus86@gmail.com>"
+LABEL maintainer "zbyrek <zbyrek93@gmail.com>"
 
 RUN apk --no-cache add python py2-pip
 
