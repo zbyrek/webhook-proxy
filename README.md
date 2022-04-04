@@ -1,12 +1,9 @@
 # Webhook Proxy
 
+My fork of great project [rycus86/webhook-proxy](https://github.com/rycus86/webhook-proxy).
+
 A simple `Python` [Flask](http://flask.pocoo.org) *REST* server to
 accept *JSON* webhooks and run actions as a result.
-
-[![Build Status](https://travis-ci.org/rycus86/webhook-proxy.svg?branch=master)](https://travis-ci.org/rycus86/webhook-proxy)
-[![Build Status](https://img.shields.io/docker/build/rycus86/webhook-proxy.svg)](https://hub.docker.com/r/rycus86/webhook-proxy)
-[![Coverage Status](https://coveralls.io/repos/github/rycus86/webhook-proxy/badge.svg?branch=master)](https://coveralls.io/github/rycus86/webhook-proxy?branch=master)
-[![Code Climate](https://codeclimate.com/github/rycus86/webhook-proxy/badges/gpa.svg)](https://codeclimate.com/github/rycus86/webhook-proxy)
 
 ## Usage
 
@@ -190,177 +187,6 @@ It requires the webhook to be signed with a secret.
 The action will raise an `ActionInvocationException` on failure.
 If that happens, the actions defined after this one will not be executed.
 
-#### docker
-
-The `docker` action interacts with the _Docker_ daemon and requires the __docker__ Python module.
-It also needs access to the _Docker_ UNIX socket at `/var/run/docker.sock`.
-
-The action supports _exactly one_ invocation on the _Docker_ client (per action).
-Invocations (or properties) are keys starting with `$` in the configuration,
-for example listing the containers would use `$containers` with `$list` as a sub-item.
-The result of the invocation (as an object from the _Docker_ client) is available to the
-_Jinja2_ templates as `result`.
-
-| key | description | default | templated | required |
-| --- | ----------- | ------- | --------- | -------- |
-| `$invocation` | Exactly one invocation supported by the _Docker_ client (see examples below) |                | yes (for values) | yes |
-| output        | Output template for printing the result on the standard output               | `{{ result }}` | yes              | no  |
-
-Examples:
-
-```yaml
-...
-  actions:
-    - docker:
-        $containers:
-          $list:
-            filters:
-              name: '{{ request.json.repo.name }}'
-        output: |
-          Containers matching "{{ request.json.name }}":
-          {% for container in result %}
-           - {{ container.name }} @ {{ container.short_id }}
-          {% endfor %}
-
-    - docker:
-        $info:
-        output: 'Docker version: {{ result.ServerVersion }} on {{ result.OperatingSystem }}'
-
-    - docker:
-        $images:
-          $pull:
-            repository: '{{ request.json.namespace }}/{{ request.json.name }}'
-            tag: '{{ request.json.get('tag', 'latest') }}'
-
-    - docker:
-        $containers:
-          $run:
-            image: 'alpine'
-            command: 'echo "Hello {{ request.json.message }}!"'
-            remove: true
-```
-
-#### docker-compose
-
-The `docker-compose` action interacts with _Docker Compose_ and requires the `docker-compose` Python module.
-
-The action supports _exactly one_ invocation on the _Docker Compose_ project (per action).
-The invocations are in the same format as with the `docker` action and the
-result is available for _Jinja2_ templates as `result` that is the return object
-from the _Docker Compose_ invocation.
-
-| key | description | default | templated | required |
-| --- | ----------- | ------- | --------- | -------- |
-| project\_name | The _Compose_ project name             | | no | yes |
-| directory     | The directory of the _Compose_ project | | no | yes |
-| composefile   | The filename of the _Composefile_ within the directory          | `docker-compose.yml` | no  | no |
-| `$invocation` | Exactly one invocation supported by the _Docker Compose_ client (see examples below) | | yes (for values) | yes |
-| output | Output template for printing the result on the standard output         | `{{ result }}`       | yes | no |
-
-Examples:
-
-```yaml
-...
-  actions:
-    - docker-compose:
-        project_name: 'web'
-        directory: '/opt/projects/web'
-        $get_services:
-        output: |
-          Compose services:
-          {% for service in result %}
-           - service: {{ service.name }}
-          {% endfor %}
-
-    - docker-compose:
-        project_name: 'backend'
-        directory: '/opt/projects/compose_project'
-        $up:
-          detached: true
-        output: |
-          Containers started:
-          {% for container in result %}
-           - {{ container.name }}
-          {% endfor %}
-
-    - docker-compose:
-        project_name: 'backend'
-        directory: '/opt/projects/compose_project'
-        $down:
-          remove_image_type: false
-          include_volumes: true
-        output: 'Compose project stopped'
-```
-
-#### docker-swarm (deprecated)
-
-*Since the merge of [docker-py#1807](https://github.com/docker/docker-py/pull/1807),
-this convenience action is no longer necessary.
-The official Docker SDK can handle Swarm service updates nicely.*
-
-The `docker-swarm` action exposes convenience _Docker_ actions for _Swarm_ related operations
-that might require quite a bit of manual work to replicate with the `docker` action.
-
-The action supports _exactly one_ invocation (per action) on its own action object.
-The invocations are in the same format as with the `docker` action and the available
-ones are:
-
-- `$restart`: restarts (force updates) a _Swarm_ service matching the `service_id` parameter
-  (this can be a service name or ID)
-- `$scale`: updates a __replicated__ service matched by `service_id` to have `replicas` number
-  of instances
-- `$update`: updates a service matched by `service_id`
-
-The update invocation uses the current service spec and updates them with the following
-parameters if they are present:
-
-- `image`, `command`, `args`, `hostname`, `env`, `dir`, `user`, `mounts`, `stop_grace_period`, `tty`
-  for the container specification (see `docker.types.services.ContainerSpec`)
-- `container_labels` for container labels
-- `secrets` for secret references as a list of dictionaries
-  (see `docker.types.services.SecretReference`) 
-- `resources`, `restart_policy`, `placement` for the task template specification
-  (see `docker.types.services.TaskTemplate`)
-- `labels` for service labels
-- `replicas` for number of instances for __replicated__ services
-- `update_config` for the service update configuration
-  (see `docker.types.services.UpdateConfig`)
-- `networks` as a list of network IDs or names
-- `endpoint_spec` for the endpoint specification
-  (see `docker.types.services.EndpointSpec`)
-
-The result of the invocations will be the service object if the service update was successful. 
-
-| key | description | default | templated | required |
-| --- | ----------- | ------- | --------- | -------- |
-| `$invocation` | Exactly one invocation supported by the action (see examples below) | | yes (for values) | yes |
-| output | Output template for printing the result on the standard output | `{{ result }}` | yes | no |
-
-Examples:
-
-```yaml
-...
-  actions:
-    - docker-swarm:
-        $restart:
-          service_id: '{{ request.json.service }}'
-        output: >
-          Service restarted: {{ result.name }}
-
-    - docker-swarm:
-        $scale:
-          service_id: '{{ request.json.service }}'
-          replicas: '{{ request.json.replicas }}'
-
-    - docker-swarm:
-        $update:
-          service_id: '{{ request.json.service }}'
-          command: '{{ request.json.command }}'
-          labels:
-            label_1: 'sample'
-            label_2: '{{ request.json.label }}'
-```
-
 #### sleep
 
 The `sleep` action waits for a given time period.
@@ -420,17 +246,6 @@ For example:
 ## Docker
 
 The application can be run in *Docker* containers using images based on *Alpine Linux*
-for 3 processor architectures with the following tags:
-
-- `latest`: for *x86* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/webhook-proxy.svg)](https://microbadger.com/images/rycus86/webhook-proxy "Get your own image badge on microbadger.com")
-- `armhf`: for *32-bits ARM* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/webhook-proxy:armhf.svg)](https://microbadger.com/images/rycus86/webhook-proxy:armhf "Get your own image badge on microbadger.com")
-- `aarch64`: for *64-bits ARM* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/webhook-proxy:aarch64.svg)](https://microbadger.com/images/rycus86/webhook-proxy:aarch64 "Get your own image badge on microbadger.com")
-
-`latest` is auto-built on [Docker Hub](https://hub.docker.com/r/rycus86/webhook-proxy)
-while the *ARM* builds are uploaded from [Travis](https://travis-ci.org/rycus86/webhook-proxy).
 
 The containers run as a non-root user.
 
@@ -439,7 +254,7 @@ To start the server:
 ```shell
 docker run -d --name=webhook-proxy -p 5000:5000      \
     -v $PWD/server.yml:/etc/conf/webhook-server.yml  \
-    rycus86/webhook-proxy:latest                     \
+    zbyrek/webhook-proxy:latest                     \
         /etc/conf/webhook-server.yml
 ```
 
@@ -448,40 +263,17 @@ Or put the configuration file at the default location:
 ```shell
 docker run -d --name=webhook-proxy -p 5000:5000  \
     -v $PWD/server.yml:/app/server.yml           \
-    rycus86/webhook-proxy:latest
+    zbyrek/webhook-proxy:latest
 ```
 
-There are 3 more tags available for images that can use the `docker` and `docker-compose`
-actions which are running as `root` user:
-
-- `docker`: for *x86* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/webhook-proxy:docker.svg)](https://microbadger.com/images/rycus86/webhook-proxy:docker "Get your own image badge on microbadger.com")
-- `armhf-docker`: for *32-bits ARM* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/webhook-proxy:armhf-docker.svg)](https://microbadger.com/images/rycus86/webhook-proxy:armhf-docker "Get your own image badge on microbadger.com")
-- `aarch64-docker`: for *64-bits ARM* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/webhook-proxy:aarch64-docker.svg)](https://microbadger.com/images/rycus86/webhook-proxy:aarch64-docker "Get your own image badge on microbadger.com")
-
-Each of these are built on [Travis](https://travis-ci.org/rycus86/webhook-proxy) and
-pushed to [Docker Hub](https://hub.docker.com/r/rycus86/webhook-proxy).
-
-To run these, the _Docker_ daemon's UNIX socket needs to be mounted into the container
-too apart from the configuration file:
-
-```shell
-docker run -d --name=webhook-proxy -p 5000:5000      \
-    -v $PWD/server.yml:/app/server.yml               \
-    -v /var/run/docker.sock:/var/run/docker.sock:ro  \
-    rycus86/webhook-proxy:docker
-```
-
-In _Docker Compose_ on a 64-bit ARM machine the service definition could look like this:
+In _Docker Compose_ on a 64-bit machine the service definition could look like this:
 
 ```yaml
 version: '2'
 services:
 
   webhooks:
-    image: rycus86/webhook-proxy:aarch64
+    image: zbyrek/webhook-proxy
     ports:
       - 8080:5000
     volumes:
@@ -490,7 +282,7 @@ services:
 
 ## Examples
 
-Have a look at the [sample.yml](https://github.com/rycus86/webhook-proxy/blob/master/sample.yml) included in this repo to get
+Have a look at the [sample.yml](https://github.com/zbyrek/webhook-proxy/blob/master/sample.yml) included in this repo to get
 a better idea of the configuration.
 
 You can also find some examples with short explanation below.
@@ -575,58 +367,3 @@ The _secret_ for this is read either from the `/var/run/secrets/github` file or
 the `GITHUB_SECRET` environment variable.
 
 > In case it is in a file, that file should contain key-value pairs, like `GITHUB_SECRET=TopSecret`
-
-- Update a _Docker Compose_ project on image changes
-
-Let's assume we have a _Compose_ project with a few services.
-When their image is updated in _Docker Hub_ we want to pull it
-and get _Compose_ to restart the related containers.
-
-```yaml
-server:
-  host: '0.0.0.0'
-  port: '5000'
-
-endpoints:
-  - /webhook/dockerhub:
-      method: 'POST'
-
-      body:
-        repository:
-          repo_name: 'somebody/.+'
-          owner: 'somebody'
-        push_data:
-          tag: 'latest'
-      
-      actions:
-        - docker:
-            $containers:
-              $list:
-            output: |
-              {% for container in result if request.json.repository.repo_name in container.image.tags %}
-                Found {{ container.name }} with {{ container.image }}
-              {% else %}
-                {% set _ = error('No containers found using %s'|filter(request.json.repo_name)) %}
-              {% endfor %}
-        - docker:
-            $images:
-              $pull:
-                repository: '{{ request.json.repo_name }}'
-                tag: '{{ request.json.tag }}'
-        - docker-compose:
-            project_name: 'autoupdate'
-            directory: '/var/compose/project'
-            $up:
-              detached: true
-            output: |
-              Containers affected:
-              {% for container in result %}
-              {{ container.name }} <{{ container.short_id }}>
-```
-
-The `/webhook/dockerhub` endpoint will accept webhooks from `somebody/*` repos
-when an image's `latest` tag is updated.
-First a `docker` action checks that we already have containers running that
-use the image then another `docker` action pulls the updated image and
-finally the `docker-compose` action applies the changes by restarting
-any related containers.
