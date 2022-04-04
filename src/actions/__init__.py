@@ -10,8 +10,6 @@ from jinja2 import Template
 
 import docker_helper
 
-from actions.replay_helper import replay
-from actions.replay_helper import initialize as _initialize_replays
 from util import ActionInvocationException
 from util import ConfigurationException
 from util import ReplayRequested
