@@ -8,7 +8,7 @@ from server import Server
 
 def parse_settings(source='server.yml'):
     with open(source, 'r') as source_file:
-        return yaml.load(source_file)
+        return yaml.safe_load(source_file)
 
 
 def handle_signal(num, _):
