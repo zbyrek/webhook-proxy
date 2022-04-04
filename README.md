@@ -9,7 +9,7 @@ accept *JSON* webhooks and run actions as a result.
 
 To start the server, run:
 
-```shell
+```bash
 python app.py [server.yml]
 ```
 
@@ -85,10 +85,10 @@ The message body validation supports lists too, the `project.item.name` in the e
 
 ### actions
 
-Action definitions support variables for most properties using _Jinja2_ templates.
+Action definitions support variables for most properties using *Jinja2* templates.
 By default, these receive the following objects in their context:
 
-- `request`   : the incoming _Flask_ request being handled
+- `request`   : the incoming *Flask* request being handled
 - `timestamp` : the Epoch timestamp as `time.time()`
 - `datetime`  : human-readable timestamp as `time.ctime()`
 - `own_container_id`: the ID of the container the app is running in or otherwise `None`
@@ -98,10 +98,10 @@ By default, these receive the following objects in their context:
 - `error(..)` : a function with an optional `message` argument to raise errors when evaluating templates
 - `context`   : a thread-local object for passing information from one action to another
 
-_Jinja2_ does not let you execute code in the templates directly, so to use
+*Jinja2* does not let you execute code in the templates directly, so to use
 the `error` and `context` objects you need to do something like this:
 
-```
+```jinja
 {% if 'something' is 'wrong' %}
   
   {# treat it as literal (will display None) #}
@@ -125,7 +125,7 @@ The following actions are supported (given their dependencies are met).
 
 #### log
 
-The `log` action prints a message on the standard output. 
+The `log` action prints a message on the standard output.
 
 | key | description | default | templated | required |
 | --- | ----------- | ------- | --------- | -------- |
@@ -133,7 +133,7 @@ The `log` action prints a message on the standard output.
 
 #### eval
 
-The `eval` action evaluates a _Jinja2_ template block.
+The `eval` action evaluates a *Jinja2* template block.
 This can be useful to work with objects passed through from previous actions using
 the `context` for example.
 
@@ -144,7 +144,7 @@ the `context` for example.
 #### execute
 
 The `execute` action executes an external command using `subprocess.check_output`.
-The output (string) of the invocation is passed to the _Jinja2_ template as `result`.
+The output (string) of the invocation is passed to the *Jinja2* template as `result`.
 
 | key | description | default | templated | required |
 | --- | ----------- | ------- | --------- | -------- |
@@ -161,8 +161,8 @@ The `shell` parameter accepts:
 #### http
 
 The `http` action sends an HTTP request to a target and requires the __requests__ Python module.
-The HTTP response object (from the _requests_ module) is available to the
-_Jinja2_ template as `response`.
+The HTTP response object (from the *requests* module) is available to the
+*Jinja2* template as `response`.
 
 | key | description | default | templated | required |
 | --- | ----------- | ------- | --------- | -------- |
@@ -176,12 +176,12 @@ _Jinja2_ template as `response`.
 
 #### github-verify
 
-The `github-verify` is a convenience action to validate incoming _GitHub_ webhooks.
+The `github-verify` is a convenience action to validate incoming *GitHub* webhooks.
 It requires the webhook to be signed with a secret.
 
 | key | description | default | templated | required |
 | --- | ----------- | ------- | --------- | -------- |
-| secret | The webhook secret configured in _GitHub_ | | yes | yes |
+| secret | The webhook secret configured in *GitHub* | | yes | yes |
 | output  | Output template for printing a message on the standard output | `{{ result }}` | yes | no |
 
 The action will raise an `ActionInvocationException` on failure.
@@ -195,7 +195,7 @@ relies on the outcome that would only happen a little bit later.
 
 | key | description | default | templated | required |
 | --- | ----------- | ------- | --------- | -------- |
-| seconds | Number of seconds to sleep for | | yes | yes | 
+| seconds | Number of seconds to sleep for | | yes | yes |
 | message | The message template to print on the standard output | `Waiting {{ seconds }} seconds before continuing ...` | yes | no |
 
 #### metrics
@@ -210,7 +210,7 @@ one metric registration from the table below.
 
 | key | description | default | templated | required |
 | --- | ----------- | ------- | --------- | -------- |
-| histogram | Registers a Histogram | | yes (labels) | yes (one) | 
+| histogram | Registers a Histogram | | yes (labels) | yes (one) |
 | summary   | Registers a Summary   | | yes (labels) | yes (one) |
 | gauge     | Registers a Gauge     | | yes (labels) | yes (one) |
 | counter   | Registers a Counter   | | yes (labels) | yes (one) |
@@ -251,7 +251,7 @@ The containers run as a non-root user.
 
 To start the server:
 
-```shell
+```bash
 docker run -d --name=webhook-proxy -p 5000:5000      \
     -v $PWD/server.yml:/etc/conf/webhook-server.yml  \
     zbyrek/webhook-proxy:latest                     \
@@ -260,110 +260,21 @@ docker run -d --name=webhook-proxy -p 5000:5000      \
 
 Or put the configuration file at the default location:
 
-```shell
+```bash
 docker run -d --name=webhook-proxy -p 5000:5000  \
     -v $PWD/server.yml:/app/server.yml           \
     zbyrek/webhook-proxy:latest
 ```
 
-In _Docker Compose_ on a 64-bit machine the service definition could look like this:
+In *Docker Compose* the service definition could look like this:
 
 ```yaml
 version: '2'
 services:
-
   webhooks:
     image: zbyrek/webhook-proxy
     ports:
-      - 8080:5000
+      - 5000:5000
     volumes:
       - ./webhook-server.yml:/app/server.yml:ro
 ```
-
-## Examples
-
-Have a look at the [sample.yml](https://github.com/zbyrek/webhook-proxy/blob/master/sample.yml) included in this repo to get
-a better idea of the configuration.
-
-You can also find some examples with short explanation below.
-
-- An externally available server listening on port `7000` and printing
-  details about a _GitHub_ push webhook
-
-```yaml
-server:
-  host: '0.0.0.0'
-  port: '7000'
-
-endpoints:
-  - /github:
-      method: 'POST'
-
-      headers:
-        X-GitHub-Delivery: '^[0-9a-f\-]+$'
-        X-GitHub-Event: 'push'
-
-      body:
-        ref: 'refs/heads/.+'
-        before: '^[0-9a-f]{40}'
-        after: '^[0-9a-f]{40}'
-        repository:
-          id: '^[0-9]+$'
-          full_name: 'sample/.+'
-          owner:
-            email: '.+@.+\..+'
-        commits:
-          id: '^[0-9a-f]{40}'
-          message: '.+'
-          author:
-            name: '.+'
-          added: '^(src/.+)?'
-          removed: '^(src/.+)?'
-        pusher:
-          name: '.+'
-          email: '.+@.+\..+'
-
-      actions:
-        - log:
-            message: |
-              Received a GitHub push from the {{ request.json.repository.full_name }} repo:
-              - Pushed by {{ request.json.pusher.name }} <{{ request.json.pusher.email }}>
-              - Commits included:
-              {% for commit in request.json.commits %}
-              +   {{ commit.id }}
-              +   {{ commit.committer.name }} at {{ commit.timestamp }}
-              +   {{ commit.message }}
-              
-              {% endfor %}
-              Check this change out at {{ request.json.compare }}
-
-        # verify the webhook signature
-        - github-verify:
-            secret: '{{ read_config("GITHUB_SECRET", "/var/run/secrets/github") }}'
-```
-
-The validators for the `/github` endpoint require that
-the `X-GitHub-Delivery` header is hexadecimal separated by dashes and
-the `X-GitHub-Event` header has the `push` value.
-The event also has to come from one of the repos under the `sample` namespace.
-Some of the commit hashes are checked that they are 40 character long
-hexadecimal values and the commit author's name has to be non-empty.
-The `commits` field is actually a list in the _GitHub_ webhook so
-the validation is applied to each commit data individually.
-The `added` and `removed` checks for example accept if the commit has
-not added or removed anything but if it did it has to be in the `src` folder.
-
-For valid webhooks the repository's name, the pushers name and emails are
-printed to the standard output followed by the ID, committer name, timestamp
-and message of each commit in the push.
-The last line displays the URL for the _GitHub_ compare page for the change.
-
-
-For more information about using the _Jinja2_ templates have a look
-at the [official documentation](http://jinja.pocoo.org).
-
-The `github-verify` action will make sure that the webhook is signed as appropriate.
-The _secret_ for this is read either from the `/var/run/secrets/github` file or
-the `GITHUB_SECRET` environment variable.
-
-> In case it is in a file, that file should contain key-value pairs, like `GITHUB_SECRET=TopSecret`
