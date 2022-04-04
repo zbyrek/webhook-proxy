@@ -47,12 +47,6 @@ def _register_available_actions():
 
     with _safe_import():
         from actions.action_http import HttpAction
-    with _safe_import():
-        from actions.action_docker import DockerAction
-    with _safe_import():
-        from actions.action_docker_compose import DockerComposeAction
-    with _safe_import():
-        from actions.action_docker_swarm import DockerSwarmAction
 
 
 class _ContextHelper(object):
