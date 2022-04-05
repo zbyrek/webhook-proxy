@@ -75,7 +75,7 @@ class Endpoint(object):
     def setup(self, app):
         @app.route(self._route, endpoint=self._route[1:], methods=[self._method])
         def receive(**kwargs):
-            if not request.json:
+            if not request.is_json:
                 if self._body:
                     return self._make_response(400, 'No payload')
 
@@ -121,7 +121,11 @@ class Endpoint(object):
         return message, status, {'Content-Type': 'text/plain'}
 
     def accept(self):
-        return self._accept_headers(request.headers, self._headers) and self._accept_body(request.json, self._body)
+        if request.is_json:
+            json = request.json
+        else:
+            json = None
+        return self._accept_headers(request.headers, self._headers) and self._accept_body(json, self._body)
 
     @staticmethod
     def _accept_headers(headers, rules):
