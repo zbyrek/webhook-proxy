@@ -68,18 +68,21 @@ class Endpoint(object):
     def current(self):
         return self._current.instance
 
-# TODO: Headers and body check needs rewrite
     def setup(self, app):
         @app.route(self._route, endpoint=self._route[1:], methods=[self._method])
         def receive(**kwargs):
             if self._body:
                 try:
-                    request.get_json(force=True)
+                    json = request.get_json(force=True)
                 except Exception:
                     return self._make_response(400, 'No valid JSON payload')
+                if not self._accept_body(json, self._body):
+                    return self._make_response(409, 'Invalid payload')
 
-            if not self.accept():
-                return self._make_response(409, 'Invalid payload')
+            if self._headers:
+                if request.headers:
+                    if not self._accept_headers(request.headers, self._headers):
+                        return self._make_response(409, 'Invalid headers')
 
             if self._async:
                 try:
@@ -122,17 +125,6 @@ class Endpoint(object):
     @staticmethod
     def _make_response(status, message):
         return message, status, {'Content-Type': 'text/plain'}
-
-    def accept(self):
-        if self._body:
-            body = self._accept_body(request.get_json(force=True), self._body)
-        else:
-            body = True
-        if self._headers:
-            headers = self._accept_headers(request.headers, self._headers)
-        else:
-            headers = True
-        return body and headers
 
     @staticmethod
     def _accept_headers(headers, rules):
