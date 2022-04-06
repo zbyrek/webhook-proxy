@@ -79,7 +79,11 @@ class Endpoint(object):
                 return self._make_response(409, 'Invalid payload')
 
             if self._async:
-                args = (app, request.environ.copy(), request.get_json())
+                if request.is_json:
+                    json = request.json
+                else:
+                    json = None
+                args = (app, request.environ.copy(), json)
 
                 threading.Thread(target=self._safe_run_actions, args=args).start()
 
