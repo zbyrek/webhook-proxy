@@ -5,4 +5,3 @@ pyYAML
 requests
 prometheus-client
 prometheus-flask-exporter
-docker-helper

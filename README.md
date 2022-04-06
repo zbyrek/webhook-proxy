@@ -91,10 +91,6 @@ By default, these receive the following objects in their context:
 - `request`   : the incoming *Flask* request being handled
 - `timestamp` : the Epoch timestamp as `time.time()`
 - `datetime`  : human-readable timestamp as `time.ctime()`
-- `own_container_id`: the ID of the container the app is running in or otherwise `None`
-- `read_config`: helper for reading configuration parameters from key-value files
-  or environment variables and also full configuration files (certificates for example),
-  see [docker_helper](https://github.com/rycus86/docker_helper) for more information and usage
 - `error(..)` : a function with an optional `message` argument to raise errors when evaluating templates
 - `context`   : a thread-local object for passing information from one action to another
 

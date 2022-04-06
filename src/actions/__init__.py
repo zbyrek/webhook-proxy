@@ -6,13 +6,8 @@ import traceback
 from flask import request
 from jinja2 import Template
 
-import docker_helper
-
-from actions.replay_helper import replay
-from actions.replay_helper import initialize as _initialize_replays
 from util import ActionInvocationException
 from util import ConfigurationException
-from util import ReplayRequested
 
 
 def _safe_import():
@@ -75,9 +70,6 @@ class Action(object):
         try:
             return self._run()
 
-        except ReplayRequested as rr:
-            replay(request.path, request.method, request.headers, request.json, rr.at)
-
         except Exception as ex:
             cause = _CauseTraceback()
             traceback.print_exc(file=cause)
@@ -97,9 +89,6 @@ class Action(object):
                                datetime=time.ctime(),
                                context=_ContextHelper(),
                                error=self.error,
-                               replay=self.request_replay,
-                               own_container_id=docker_helper.get_current_container_id(),
-                               read_config=docker_helper.read_configuration,
                                **kwargs)
 
     def error(self, message=''):
@@ -107,15 +96,6 @@ class Action(object):
             message = 'The "%s" action threw an error' % self.action_name
 
         raise ActionInvocationException(message)
-
-    @staticmethod
-    def request_replay(after):
-        after = float(after)
-
-        if after <= 0:
-            raise ActionInvocationException('Illegal replay interval: %.2f' % after)
-
-        raise ReplayRequested(at=time.time() + after)
 
     @classmethod
     def register(cls, name, action_type):
@@ -150,12 +130,4 @@ def action(name):
     return invoke
 
 
-def _safe_initialize_replays():
-    try:
-        _initialize_replays()
-    except Exception as ex:
-        print('Failed to initialize replays, the functionality won\'t be available! Cause: %s' % ex)
-
-
 _register_available_actions()
-_safe_initialize_replays()

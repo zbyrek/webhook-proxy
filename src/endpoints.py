@@ -6,8 +6,6 @@ import six
 from flask import request
 from jinja2 import Template
 
-import docker_helper
-
 from actions import Action
 from util import ConfigurationException, classproperty
 

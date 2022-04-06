@@ -14,12 +14,6 @@ class ActionInvocationException(Exception):
     pass
 
 
-class ReplayRequested(Exception):
-    def __init__(self, at):
-        super(ReplayRequested, self).__init__()
-        self.at = at
-
-
 def import_action_module(file_path):
     directory = os.environ.get('TMP_IMPORT_DIR', '/tmp')
 
