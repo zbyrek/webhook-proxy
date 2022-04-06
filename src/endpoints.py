@@ -68,21 +68,24 @@ class Endpoint(object):
     def current(self):
         return self._current.instance
 
+# TODO: Headers and body check needs rewrite
     def setup(self, app):
         @app.route(self._route, endpoint=self._route[1:], methods=[self._method])
         def receive(**kwargs):
-            if not request.is_json:
-                if self._body:
-                    return self._make_response(400, 'No payload')
+            if self._body:
+                try:
+                    request.get_json(force=True)
+                except Exception:
+                    return self._make_response(400, 'No valid JSON payload')
 
             if not self.accept():
                 return self._make_response(409, 'Invalid payload')
 
             if self._async:
-                if request.is_json:
-                    json = request.json
-                else:
-                    json = None
+                try:
+                    json = request.get_json(force=True)
+                except Exception:
+                    return self._make_response(400, 'No valid JSON payload')
                 args = (app, request.environ.copy(), json)
 
                 threading.Thread(target=self._safe_run_actions, args=args).start()
@@ -121,19 +124,23 @@ class Endpoint(object):
         return message, status, {'Content-Type': 'text/plain'}
 
     def accept(self):
-        if request.is_json:
-            json = request.json
+        if self._body:
+            body = self._accept_body(request.get_json(force=True), self._body)
         else:
-            json = None
-        return self._accept_headers(request.headers, self._headers) and self._accept_body(json, self._body)
+            body = True
+        if self._headers:
+            headers = self._accept_headers(request.headers, self._headers)
+        else:
+            headers = True
+        return body and headers
 
     @staticmethod
     def _accept_headers(headers, rules):
         for key, rule in rules.items():
             value = headers.get(key, '')
 
-            translated_rule = Template(rule).render(read_config=docker_helper.read_configuration)
-            translated_value = Template(value).render(read_config=docker_helper.read_configuration)
+            translated_rule = Template(rule).render()
+            translated_value = Template(value).render()
 
             if not re.match(translated_rule, translated_value):
                 print('Failed to validate the "%s" header: "%s" does not match "%s"' %
@@ -159,14 +166,10 @@ class Endpoint(object):
 
     def _check_body(self, value, rule, property_path):
         if isinstance(rule, six.string_types):
-            rule = Template(rule).render(
-                read_config=docker_helper.read_configuration
-            )
+            rule = Template(rule).render()
 
         if isinstance(value, six.string_types):
-            value = Template(value).render(
-                read_config=docker_helper.read_configuration
-            )
+            value = Template(value).render()
 
         if isinstance(rule, dict) and isinstance(value, dict):
             if not self._accept_body(value, rule, property_path):
