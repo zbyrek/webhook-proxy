@@ -38,7 +38,6 @@ def _safe_import():
 def _register_available_actions():
     from actions.action_log import LogAction
     from actions.action_execute import ExecuteAction
-    from actions.action_evaluate import EvaluateAction
     from actions.action_github_verify import GitHubVerifyAction
     from actions.action_sleep import SleepAction
     from actions.action_metrics import MetricsAction

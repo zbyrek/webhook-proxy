@@ -131,16 +131,6 @@ The `log` action prints a message on the standard output.
 | --- | ----------- | ------- | --------- | -------- |
 | message | The log message template | `Processing {{ request.path }} ...` | yes | no |
 
-#### eval
-
-The `eval` action evaluates a *Jinja2* template block.
-This can be useful to work with objects passed through from previous actions using
-the `context` for example.
-
-| key | description | default | templated | required |
-| --- | ----------- | ------- | --------- | -------- |
-| block | The template block to evaluate | | yes | yes |
-
 #### execute
 
 The `execute` action executes an external command using `subprocess.check_output`.
