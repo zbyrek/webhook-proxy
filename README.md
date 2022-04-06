@@ -263,4 +263,6 @@ services:
       - 5000:5000
     volumes:
       - ./webhook-server.yml:/app/server.yml:ro
+    environment:
+      TZ: 'Europe/Warsaw'
 ```

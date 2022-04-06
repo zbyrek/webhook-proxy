@@ -4,7 +4,7 @@ FROM $BASE_IMAGE
 
 LABEL maintainer "zbyrek <zbyrek93@gmail.com>"
 
-RUN apk --no-cache add python3 py-pip
+RUN apk --no-cache add python3 py-pip tzdata
 
 ADD requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt
